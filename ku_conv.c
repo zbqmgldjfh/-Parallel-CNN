@@ -10,15 +10,20 @@
 #include <mqueue.h>
 #include <sys/resource.h>
 
-void PrintFunc(int **mat, int len);               // 출력함수
-void makeMatrix(int **matrix, int X, int Y);      // matrix에 랜덤수 삽입
-void CheckXY(int num, int *ch_X, int *ch_Y);      // input숫자 판별기
-void MemFree(int **mat, int len);                 // 할당받은 메모리 영역 반환
-int **Convolution(int *x, int *y, int **mat);     // Convolution filtering
-int ConvolLayer(int (*fun)[3]);                   // Convolution core filter
-int **MaxPooling(int *x, int *y, int **mat);      // max-pooling filtering
-int PoolingLayer(int (*fun)[2]);                  // max-pooling core filter
-int **ResultMat(int x, int y, int (*func)(void)); // 함수로 인자를 받아 matrix만든후 그 matrix주소 반환
+void PrintFunc(int **mat, int len);                                          // 출력함수
+void makeMatrix(int **matrix, int X, int Y);                                 // matrix에 랜덤수 삽입
+void CheckXY(int num, int *ch_X, int *ch_Y);                                 // input숫자 판별기
+void MemFree(int **mat, int len);                                            // 할당받은 메모리 영역 반환
+int **Convolution(int *x, int *y, int **mat);                                // Convolution filtering
+int ConvolLayer(int (*fun)[3]);                                              // Convolution core filter
+int **MaxPooling(int *x, int *y, int **mat);                                 // max-pooling filtering
+int PoolingLayer(int (*fun)[2]);                                             // max-pooling core filter
+int **ResultMat(int x, int y, int (*func)(void));                            // 함수로 인자를 받아 matrix만든후 그 matrix주소 반환
+mqd_t ku_mq_open(char *mqname, int msg_size);                                // message queue wrapper funtion, 권한값, 특징 들을 반복을 피하기 위해
+void ku_mq_send(char *mqname, char *data, int msg_size, unsigned int id);    // ku_mq_open을 이용하는 wrapper function
+void ku_mq_receive(char *mqname, char *data, int msg_size, unsigned int id); // ku_mq_open을 이용하는 wrapper function
+void cworker_func(int id);                                                   // Convolution 계산을 위한 각각으 worker 생성
+void pworker_func(int id);                                                   // MaxPooling 계산을 위한 각각으 worker 생성
 
 volatile int size = 0;
 int **worker_pids;
@@ -44,6 +49,84 @@ struct msg_ret_st // 결과값 받아오기
 void signalhandler()
 {
 }
+
+/************************************************MAIN************************************************/
+
+int main(int argc, char *argv[])
+{
+    int colLen0 = 0, colLen1 = 0, colLen2 = 0;
+    int X = 0, Y = 0;
+    int **midMat, **endMat;
+
+    if (argc != 2) // 인자가  2개가 아닌 경우 종료
+    {
+        printf("Please input 2 arguments!!\n");
+        return 0;
+    }
+
+    size = atoi(argv[1]); // 정수변환
+
+    CheckXY(size, &X, &Y); // 옳바른 input인지 확인
+
+    int **oriMat = (int **)malloc(sizeof(int *) * X); // X(행) * Y(열) matrix 메모리 할당, 메모리 할당 함수를 따로 만들까도
+    for (int i = 0; i < X; i++)                       // 생각했는대 혹시몰라 수업ppt방식 예시대로 할당
+        oriMat[i] = (int *)malloc(sizeof(int) * Y);
+
+    makeMatrix(oriMat, X, Y); // num차원 matrix 데이터 생성
+    PrintFunc(oriMat, X);
+    // worker_pid를 저장한 matix 생성
+    worker_pids = (int **)malloc(sizeof(int *) * (X - 2));
+    for (int i = 0; i < X - 2; i++)
+    {
+        worker_pids[i] = (int *)malloc(sizeof(int) * (X - 2));
+    }
+
+    signal(SIGUSR1, signalhandler);
+
+    for (int i = 0; i < X - 2; i++)
+    {
+        for (int j = 0; j < X - 2; j++)
+        {
+            int child_pid;
+            if ((child_pid = fork()) == 0) // child process 미리 생성
+            {
+                cworker_func(i * X + j);
+                if (i < ((X / 2) - 1) && j < ((X / 2) - 1))
+                    pworker_func(i * X + j);
+                return 0;
+            }
+            else
+            {
+                worker_pids[i][j] = child_pid; // 자식의 pid를 matrix로 저장해둠
+            }
+        }
+    }
+
+    colLen0 = X;
+
+    midMat = Convolution(&X, &Y, oriMat); // convolution된후 생성된 matrix의 주소 반환
+    colLen1 = X;
+
+    PrintFunc(midMat, X);
+
+    endMat = MaxPooling(&X, &Y, midMat); // maxpooling된후 생성된 matrix의 주소 반환
+    colLen2 = X;
+
+    PrintFunc(endMat, X); // 최종 결과 출력
+
+    mq_unlink("/mq_mat_3x3"); // 해당 Queue 삭제
+    mq_unlink("/mq_mat_2x2");
+    mq_unlink("/mq_ret");
+    mq_unlink("/mq_check");
+
+    MemFree(oriMat, colLen0); // num차원 matrix 저장공간 free
+    MemFree(midMat, colLen1);
+    MemFree(endMat, colLen2);
+
+    return 0;
+}
+
+/*******************************************************************************************************/
 
 mqd_t ku_mq_open(char *mqname, int msg_size) // message queue wrapper funtion
 {
@@ -89,7 +172,9 @@ void cworker_func(int id)
 {
     struct msg_matrix_3x3_st msg_matrix_3x3;
     ku_mq_send("/mq_check", (char *)&id, sizeof(int), 0);
+    printf("here1");
     pause();
+    printf("here2");
     ku_mq_receive("/mq_mat_3x3", (char *)&msg_matrix_3x3, sizeof(struct msg_matrix_3x3_st), 0);
 
     int convl_ret = ConvolLayer(msg_matrix_3x3.value);
@@ -114,83 +199,6 @@ void pworker_func(int id)
     pause();
     ku_mq_send("/mq_ret", (char *)&msg_ret, sizeof(struct msg_ret_st), 0);
 }
-
-/************************************************MAIN************************************************/
-
-int main(int argc, char *argv[])
-{
-    int colLen0 = 0, colLen1 = 0, colLen2 = 0;
-    int X = 0, Y = 0;
-    int **midMat, **endMat;
-
-    if (argc != 2) // 인자가  2개가 아닌 경우 종료
-    {
-        printf("Please input 2 arguments!!\n");
-        return 0;
-    }
-
-    size = atoi(argv[1]); // 정수변환
-
-    CheckXY(size, &X, &Y); // 옳바른 input인지 확인
-
-    int **oriMat = (int **)malloc(sizeof(int *) * X); // X(행) * Y(열) matrix 메모리 할당, 메모리 할당 함수를 따로 만들까도
-    for (int i = 0; i < X; i++)                       // 생각했는대 혹시몰라 수업ppt방식 예시대로 할당
-        oriMat[i] = (int *)malloc(sizeof(int) * Y);
-
-    makeMatrix(oriMat, X, Y); // num차원 matrix 데이터 생성
-    PrintFunc(oriMat, X);
-
-    worker_pids = (int **)malloc(sizeof(int *) * (X - 2));
-    for (int i = 0; i < X - 2; i++)
-    {
-        worker_pids[i] = (int *)malloc(sizeof(int) * (X - 2));
-    }
-
-    for (int i = 0; i < X - 2; i++)
-    {
-        for (int j = 0; j < X - 2; j++)
-        {
-            int child_pid;
-            if ((child_pid = fork()) == 0)
-            {
-                signal(SIGUSR1, signalhandler);
-                cworker_func(i * X + j);
-                if (i < ((X / 2) - 1) && j < ((X / 2) - 1))
-                    pworker_func(i * X + j);
-                return 0;
-            }
-            else
-            {
-                worker_pids[i][j] = child_pid; // 자식의 pid를 matrix로 저장해둠
-            }
-        }
-    }
-
-    colLen0 = X;
-
-    midMat = Convolution(&X, &Y, oriMat); // convolution된후 생성된 matrix의 주소 반환
-    colLen1 = X;
-
-    PrintFunc(midMat, X);
-
-    endMat = MaxPooling(&X, &Y, midMat); // maxpooling된후 생성된 matrix의 주소 반환
-    colLen2 = X;
-
-    PrintFunc(endMat, X); // 최종 결과 출력
-
-    mq_unlink("/mq_mat_3x3"); // 해당 Queue 삭제
-    mq_unlink("/mq_mat_2x2");
-    mq_unlink("/mq_ret");
-    mq_unlink("/mq_check");
-
-    MemFree(oriMat, colLen0); // num차원 matrix 저장공간 free
-    MemFree(midMat, colLen1);
-    MemFree(endMat, colLen2);
-
-    return 0;
-}
-
-/*******************************************************************************************************/
 
 void CheckXY(int num, int *ch_X, int *ch_Y)
 {
