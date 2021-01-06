@@ -29,4 +29,15 @@
 >사전에 worker_process를 미리생성후 이를 활용
 
 ## Convolutional layer
+<img src = "https://user-images.githubusercontent.com/60593969/103774701-5787aa00-5070-11eb-9a7c-a30e6460ef27.jpg" width="650px">
+
+#### NxN matrix에서 3x3의 지정된 filter를 이용하여 Convolution연산을 진행함 
+#### result_matrix는 (n-2)x(n-2) 가 된다. 이는 필요한 Cworker의 수와 동일.
+             
+## Pooling layer
+<img src = "https://user-images.githubusercontent.com/60593969/103774695-56ef1380-5070-11eb-9e91-dc8629a76928.jpg" width="650px">
+
+#### max-pooling 연산을 해줌. 각 사이즈는 2x2로 고정
+#### input_matrix가 nxn이면 output으로는 (n/2)x(n/2)가 필요. 이는 필요한 Pworker의 수와 동일.
+
 
