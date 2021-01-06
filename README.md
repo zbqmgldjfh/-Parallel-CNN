@@ -10,3 +10,13 @@
 ### - Convolution layer 구현
 ### - Pooling layer 구현
 <img src = "https://user-images.githubusercontent.com/60593969/103480651-c5399900-4e18-11eb-8659-4f44440d67bc.jpg" width="700px">
+
+## 과정
+<img src = "https://user-images.githubusercontent.com/60593969/103772342-b814e800-506c-11eb-83ee-c4cc023a6d23.png" width="700px">
+1) 필요한 worker의 수를 파악하고 먼저 worker_pool을 생성한다.   
+2) Parent process에서 worker가 준비되었는지 확인후(동기화), 각 worker들에게 id값을 전달한다.   
+3) 각 worker들은 id값을 받고 Filter르 사용하여 연산한다. 이후 대기   
+4) Parent process에서 각 worker들에게 signal 전달   
+5) worker들이 Parent process에게 결과값 전송   
+6) 이를 Pooling layer에서도 반복   
+7) 최종 결과를 Parent process에서 받은후 output 출력   
