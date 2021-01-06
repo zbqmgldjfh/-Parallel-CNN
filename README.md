@@ -23,7 +23,8 @@
 
 ## The Implement Plans
 <img src = "https://user-images.githubusercontent.com/60593969/103774201-89e4d780-506f-11eb-8dc7-7dca770e106c.jpg" width="650px">
-**병렬성을 위해 2-2 방식으로 진행**   
+
+#### 병렬성을 위해 2-2 방식으로 진행 
 
 >사전에 worker_process를 미리생성후 이를 활용
 
