@@ -28,25 +28,25 @@ void pworker_func(int id);                                                   // 
 volatile int size = 0;
 int **worker_pids;
 
-struct msg_matrix_3x3_st
+struct msg_matrix_3x3_st  // 3x3 matrix 전달(main->worker로)
 {
     long id;
     int value[3][3];
 };
 
-struct msg_matrix_2x2_st
+struct msg_matrix_2x2_st // 2x2 matrix 전달(main->worker로)
 {
     long id;
     int value[2][2];
 };
 
-struct msg_ret_st // 결과값 받아오기
+struct msg_ret_st // 결과값 받아오기 (worker->main으로 )
 {
     long id;
     int value;
 };
 
-void signalhandler()
+void signalhandler()  // 단순 signal_interrupt 발생용
 {
 }
 
@@ -66,22 +66,22 @@ int main(int argc, char *argv[])
 
     size = atoi(argv[1]); // 정수변환
 
-    CheckXY(size, &X, &Y); // 옳바른 input인지 확인
+    CheckXY(size, &X, &Y); // 옳바른 input인지 확인, 이후 X, Y값 지정
 
     int **oriMat = (int **)malloc(sizeof(int *) * X); // X(행) * Y(열) matrix 메모리 할당, 메모리 할당 함수를 따로 만들까도
     for (int i = 0; i < X; i++)                       // 생각했는대 혹시몰라 수업ppt방식 예시대로 할당
         oriMat[i] = (int *)malloc(sizeof(int) * Y);
 
     makeMatrix(oriMat, X, Y); // num차원 matrix 데이터 생성
-    PrintFunc(oriMat, X);
-    // worker_pid를 저장한 matix 생성
+    PrintFunc(oriMat, X);  // 생성된 matrix 확인용 
+    // worker_pid를 저장할 matix 생성
     worker_pids = (int **)malloc(sizeof(int *) * (X - 2));
     for (int i = 0; i < X - 2; i++)
     {
         worker_pids[i] = (int *)malloc(sizeof(int) * (X - 2));
     }
 
-    signal(SIGUSR1, signalhandler);
+    signal(SIGUSR1, signalhandler);  // 시그널 등록
 
     for (int i = 0; i < X - 2; i++)
     {
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
             int child_pid;
             if ((child_pid = fork()) == 0) // child process 미리 생성
             {
-                cworker_func(i * X + j);
+                cworker_func(i * X + j); // convollutiion worker생성
                 if (i < ((X / 2) - 1) && j < ((X / 2) - 1))
                     pworker_func(i * X + j);
                 return 0;
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    colLen0 = X;
+    colLen0 = X;  // 나중에 메모리 반환을 위해 기리 저장
 
     midMat = Convolution(&X, &Y, oriMat); // convolution된후 생성된 matrix의 주소 반환
     colLen1 = X;
@@ -143,7 +143,7 @@ mqd_t ku_mq_open(char *mqname, int msg_size) // message queue wrapper funtion
     return mq_des;
 }
 
-void ku_mq_send(char *mqname, char *data, int msg_size, unsigned int id)
+void ku_mq_send(char *mqname, char *data, int msg_size, unsigned int id) // send용 wrapper 함수
 {
     mqd_t mq_des = ku_mq_open(mqname, msg_size);
     if (mq_send(mq_des, (char *)&data, msg_size, id) == -1)
@@ -154,7 +154,7 @@ void ku_mq_send(char *mqname, char *data, int msg_size, unsigned int id)
     mq_close(mq_des);
 }
 
-void ku_mq_receive(char *mqname, char *data, int msg_size, unsigned int id)
+void ku_mq_receive(char *mqname, char *data, int msg_size, unsigned int id) // receive용 wrapper 함수
 {
     unsigned int msgid;
     mqd_t mq_des = ku_mq_open(mqname, msg_size);
@@ -168,23 +168,21 @@ void ku_mq_receive(char *mqname, char *data, int msg_size, unsigned int id)
     mq_close(mq_des);
 }
 
-void cworker_func(int id)
+void cworker_func(int id)  // worker
 {
     struct msg_matrix_3x3_st msg_matrix_3x3;
-    ku_mq_send("/mq_check", (char *)&id, sizeof(int), 0);
-    printf("here1");
-    pause();
-    printf("here2");
-    ku_mq_receive("/mq_mat_3x3", (char *)&msg_matrix_3x3, sizeof(struct msg_matrix_3x3_st), 0);
+    ku_mq_send("/mq_check", (char *)&id, sizeof(int), 0); // id값을 보냄
+    pause(); // 정지상태로 대기 
+    ku_mq_receive("/mq_mat_3x3", (char *)&msg_matrix_3x3, sizeof(struct msg_matrix_3x3_st), 0); // interrupt 발생으로 깨어남
 
-    int convl_ret = ConvolLayer(msg_matrix_3x3.value);
+    int convl_ret = ConvolLayer(msg_matrix_3x3.value);  // 핵심 연산후 결과값 반환
 
-    struct msg_ret_st msg_ret = {msg_matrix_3x3.id, convl_ret};
-    ku_mq_send("/mq_check", (char *)&id, sizeof(int), 0);
-    pause();
+    struct msg_ret_st msg_ret = {msg_matrix_3x3.id, convl_ret};  // 결과값 생성
+    ku_mq_send("/mq_check", (char *)&id, sizeof(int), 0); // 결과값 재전송
+    pause(); // 대기
     ku_mq_send("/mq_ret", (char *)&msg_ret, sizeof(struct msg_ret_st), 0);
 }
-
+// cworker_func과 같은 논리 
 void pworker_func(int id)
 {
     struct msg_matrix_2x2_st msg_matrix_2x2;
@@ -228,7 +226,7 @@ int **Convolution(int *x, int *y, int **mat) // convolution 곱을 수업때 지
     for (int i = 0; i < newLen; i++)
     {
         for (int j = 0; j < newLen; j++)
-        {
+        {  // worker들이 생성되었음을 확인 (동기화 과정 )
             ku_mq_receive("/mq_check", (char *)&check, sizeof(int), 0);
             printf("come %d", check);
         }
@@ -238,20 +236,20 @@ int **Convolution(int *x, int *y, int **mat) // convolution 곱을 수업때 지
     {
         for (int j = 0; j < newLen; j++)
         {
-            struct msg_matrix_3x3_st msg_matrix_3x3;
-            msg_matrix_3x3.id = i * m + j;
+            struct msg_matrix_3x3_st msg_matrix_3x3; // 정보를 보낼 구조체 생성
+            msg_matrix_3x3.id = i * m + j;  // id값 저장 
             for (int a = 0; a < 3; a++)
             {
                 for (int b = 0; b < 3; b++)
                 {
-                    msg_matrix_3x3.value[a][b] = mat[i + a][j + b];
+                    msg_matrix_3x3.value[a][b] = mat[i + a][j + b];  // value값 저장 
                 }
             }
-            ku_mq_send("/mq_mat_3x3", (char *)&msg_matrix_3x3, sizeof(struct msg_matrix_3x3_st), 0);
-            kill(worker_pids[i][j], SIGUSR1);
+            ku_mq_send("/mq_mat_3x3", (char *)&msg_matrix_3x3, sizeof(struct msg_matrix_3x3_st), 0); // 구조체 전송
+            kill(worker_pids[i][j], SIGUSR1); // signal 전송 -> worker가 pause()에서 깨어남
         }
     }
-
+    // 다시 동기화 과정
     for (int i = 0; i < newLen; i++)
     {
         for (int j = 0; j < newLen; j++)
@@ -259,14 +257,14 @@ int **Convolution(int *x, int *y, int **mat) // convolution 곱을 수업때 지
             ku_mq_receive("/mq_check", (char *)&check, sizeof(int), 0);
         }
     }
-
+    // 결과를 받는
     for (int i = 0; i < newLen; i++)
     {
         for (int j = 0; j < newLen; j++)
         {
             struct msg_ret_st msg_ret;
-            kill(worker_pids[i][j], SIGUSR1);
-            ku_mq_receive("/mq_ret", (char *)&msg_ret, sizeof(struct msg_ret_st), 0);
+            kill(worker_pids[i][j], SIGUSR1); // signal을 먼저 보내 깨운후에 
+            ku_mq_receive("/mq_ret", (char *)&msg_ret, sizeof(struct msg_ret_st), 0); // receiver 호출 
             resultMat[msg_ret.id / size][msg_ret.id % size] = msg_ret.value;
         }
     }
@@ -276,7 +274,7 @@ int **Convolution(int *x, int *y, int **mat) // convolution 곱을 수업때 지
     return (int **)resultMat; // 생성된 result matrix의 포인터 반환
 }
 
-int ConvolLayer(int (*fun)[3])
+int ConvolLayer(int (*fun)[3]) // 필터
 {
     int sum = 0;
 
