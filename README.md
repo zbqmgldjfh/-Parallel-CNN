@@ -6,6 +6,7 @@
 비전공자라 부족하다는 편견을 벗어내기 위해 C를 엄청 공부하였고, 그덕분에 시프 수업 또한 A+을 받을 수 있었습니다.
 
 ## Parallel CNN 설계
+> Parallel CNN중 일부만 구현
 ### - Convolution layer 구현
 ### - Pooling layer 구현
 <img src = "https://user-images.githubusercontent.com/60593969/103480651-c5399900-4e18-11eb-8659-4f44440d67bc.jpg" width="700px">
