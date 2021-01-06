@@ -21,4 +21,5 @@
 #### 6) 이를 Pooling layer에서도 반복   
 #### 7) 최종 결과를 Parent process에서 받은후 output 출력   
 
-##
+## Convolutional layer
+
