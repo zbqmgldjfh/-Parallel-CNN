@@ -44,3 +44,8 @@
 <img src = "https://user-images.githubusercontent.com/60593969/103899247-7736d500-5139-11eb-94c8-522326cbc2b9.png" width="650px">
 
 **ID값은 각 원소의 행과 열의 index를 이용하여 고유한 값을 부여하였습니다.**
+
+## 
+<img src = "https://user-images.githubusercontent.com/60593969/103900488-3344cf80-513b-11eb-860e-18331576f607.jpg" width="1000px">
+
+
