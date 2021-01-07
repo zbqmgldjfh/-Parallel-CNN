@@ -2,7 +2,7 @@
 ## 컴퓨터공학 포토폴리오 김지우
 #### 진현욱 교수님의 시스템프로그래밍을 신청하여 한학기 동안 수강하였습니다.
 ![KakaoTalk_20201224_122503724](https://user-images.githubusercontent.com/60593969/103407755-23f5dd00-4ba3-11eb-9cd0-96cb4f1c90d7.jpg)   
-아직 다전공을 성공하지 못하였기에 일선으로 수강
+리눅스를 너무 공부해보고 싶었는대 아직 다전공을 성공하지 못하였기에 우선 일선으로 수강
 
 ## Parallel CNN 설계
 > Parallel CNN중 일부만 구현
@@ -40,4 +40,7 @@
 #### 1) max-pooling 연산을 해줌. 각 사이즈는 2x2로 고정
 #### 2) input_matrix가 nxn이면 output으로는 (n/2)x(n/2)가 필요. 이는 필요한 Pworker의 수와 동일.
 
+## ID값
+<img src = "https://user-images.githubusercontent.com/60593969/103899247-7736d500-5139-11eb-94c8-522326cbc2b9.png" width="650px">
 
+**ID값은 각 원소의 행과 열의 index를 이용하여 고유한 값을 부여하였습니다.**
