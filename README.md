@@ -110,3 +110,14 @@ void ku_mq_receive(char *mqname, char *data, int msg_size, unsigned int id) // r
     mq_close(mq_des);
 }
 ```
+
+## Signal handler
+```C
+void signalhandler()  // 단순 signal_interrupt 발생용
+{
+}
+```
+
+각 process가 동기화를 마친후 pause()를 통해 각 worker를 정지시켜둔다.   
+data 통신 준비를 위해 signal을 전송하여 pause()에서 벗어나 send 또는 receive를 하도록 호출한다.    
+handler는 단순히 pause()에서 벗어나기위한 용도이다.
