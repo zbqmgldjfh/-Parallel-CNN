@@ -41,4 +41,71 @@
 ## 
 <img src = "https://user-images.githubusercontent.com/60593969/103900488-3344cf80-513b-11eb-860e-18331576f607.jpg" width="1000px">
 
+## Message Structure
 
+**데이터 송수신을 위한 구조체 선언**
+
+```C
+struct msg_matrix_3x3_st  // 3x3 matrix 전달(main->worker로)
+{
+    long id;
+    int value[3][3];
+};
+
+struct msg_matrix_2x2_st // 2x2 matrix 전달(main->worker로)
+{
+    long id;
+    int value[2][2];
+};
+
+struct msg_ret_st // 결과값 받아오기 (worker->main으로 )
+{
+    long id;
+    int value;
+};
+```
+## Message Queue API
+   -> POSIX Message Queue 이용
+   -> 이러한 IPC 사용을 위해서 multi_process로 구성
+
+```C
+mqd_t ku_mq_open(char *mqname, int msg_size) // message queue wrapper funtion
+{
+    struct mq_attr attr;
+    mqd_t mq_des;
+    attr.mq_maxmsg = 10;
+    attr.mq_msgsize = msg_size;
+    mq_des = mq_open(mqname, O_CREAT | O_RDWR, 0600, &attr);
+    if (mq_des < 0)
+    {
+        perror("mq_open()");
+        exit(0);
+    }
+    return mq_des;
+}
+
+void ku_mq_send(char *mqname, char *data, int msg_size, unsigned int id) // send용 wrapper 함수
+{
+    mqd_t mq_des = ku_mq_open(mqname, msg_size);
+    if (mq_send(mq_des, (char *)&data, msg_size, id) == -1)
+    {
+        perror("mq_send");
+        exit(0);
+    }
+    mq_close(mq_des);
+}
+
+void ku_mq_receive(char *mqname, char *data, int msg_size, unsigned int id) // receive용 wrapper 함수
+{
+    unsigned int msgid;
+    mqd_t mq_des = ku_mq_open(mqname, msg_size);
+
+    if (mq_receive(mq_des, (char *)&data, msg_size, &msgid) == -1)
+    {
+        perror("mq_receive");
+        exit(0);
+    }
+
+    mq_close(mq_des);
+}
+```
