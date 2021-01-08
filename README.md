@@ -65,15 +65,16 @@ struct msg_ret_st // 결과값 받아오기 (worker->main으로 )
 };
 ```
 ## Message Queue API
-   -> POSIX Message Queue 이용
+   -> POSIX Message Queue 이용    
    -> 이러한 IPC 사용을 위해서 multi_process로 구성
 
 ```C
+// 매번 mq_open을 직접 사용하기보다는  wrapper funtion을 만들어 용의하게 사용
 mqd_t ku_mq_open(char *mqname, int msg_size) // message queue wrapper funtion
 {
     struct mq_attr attr;
     mqd_t mq_des;
-    attr.mq_maxmsg = 10;
+    attr.mq_maxmsg = 10; // 메시지큐의 최대수는 10개
     attr.mq_msgsize = msg_size;
     mq_des = mq_open(mqname, O_CREAT | O_RDWR, 0600, &attr);
     if (mq_des < 0)
@@ -81,13 +82,13 @@ mqd_t ku_mq_open(char *mqname, int msg_size) // message queue wrapper funtion
         perror("mq_open()");
         exit(0);
     }
-    return mq_des;
+    return mq_des; // 메시지큐 id값 반환
 }
-
+// 위에서 만든 ku_mq_open을 내장한 sned함수
 void ku_mq_send(char *mqname, char *data, int msg_size, unsigned int id) // send용 wrapper 함수
 {
-    mqd_t mq_des = ku_mq_open(mqname, msg_size);
-    if (mq_send(mq_des, (char *)&data, msg_size, id) == -1)
+    mqd_t mq_des = ku_mq_open(mqname, msg_size); // 큐를 열고
+    if (mq_send(mq_des, (char *)&data, msg_size, id) == -1) // 메시지를 보내는
     {
         perror("mq_send");
         exit(0);
@@ -98,9 +99,9 @@ void ku_mq_send(char *mqname, char *data, int msg_size, unsigned int id) // send
 void ku_mq_receive(char *mqname, char *data, int msg_size, unsigned int id) // receive용 wrapper 함수
 {
     unsigned int msgid;
-    mqd_t mq_des = ku_mq_open(mqname, msg_size);
+    mqd_t mq_des = ku_mq_open(mqname, msg_size); // 큐를 열고
 
-    if (mq_receive(mq_des, (char *)&data, msg_size, &msgid) == -1)
+    if (mq_receive(mq_des, (char *)&data, msg_size, &msgid) == -1) // 메시지를 받는
     {
         perror("mq_receive");
         exit(0);
