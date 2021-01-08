@@ -38,9 +38,6 @@
 
 **ID값은 각 원소의 행과 열의 index를 이용하여 고유한 값을 부여하였습니다.**
 
-## 
-<img src = "https://user-images.githubusercontent.com/60593969/103900488-3344cf80-513b-11eb-860e-18331576f607.jpg" width="1000px">
-
 ## Message Structure
 
 **데이터 송수신을 위한 구조체 선언**
@@ -69,7 +66,7 @@ struct msg_ret_st // 결과값 받아오기 (worker->main으로 )
    -> 이러한 IPC 사용을 위해서 multi_process로 구성
 
 ```C
-// 매번 mq_open을 직접 사용하기보다는  wrapper funtion을 만들어 용의하게 사용
+// 매번 mq_open을 하려면 attr값을 넘겨야 하는대 이에대한 반복을 줄이기 위해 wrapper함수를 만듬
 mqd_t ku_mq_open(char *mqname, int msg_size) // message queue wrapper funtion
 {
     struct mq_attr attr;
