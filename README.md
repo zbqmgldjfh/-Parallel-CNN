@@ -137,8 +137,10 @@ void cworker_func(int id)  // worker
 }
 ```
 
-mq_check라는 message queue에 메시지를 넣음으로써 모든 worker가 준비되었다는 것 을 확인한 후에 main에서 다음 step을 진행하도록.    
-동기화가 끝난후 각 worker들은 data받을 준비가 완료되었다. main이 어떤 data를 어디에 전송해야할지는 모름으로 main은 signal과 함께 data를 전송하다.    
+mq_check라는 message queue에 메시지를 넣음으로써 모든 worker가 준비되었다는 것 을 확인한 후에 main에서 다음 step을 진행하도록.  
+
+동기화가 끝난후 각 worker들은 data받을 준비가 완료되었다. main이 어떤 data를 어디에 전송해야할지는 모름으로 main은 signal과 함께 data를 전송한다.    
+
 따라서 pause()를 통해서 기다리고 있던 worker는 signal을 통해 깨어나고, 그 pause()에서 깨어난 worker가 message queue를 읽어들여 data를 처리
 
 ```C
@@ -158,3 +160,138 @@ void pworker_func(int id)
 }
 ```
 이는 pworker_func도 위의 cworker_func와 같은 방식으로 작동한다.
+
+## Create Workers
+```C
+    signal(SIGUSR1, signalhandler);  // 시그널 등록
+
+    for (int i = 0; i < X - 2; i++)
+    {
+        for (int j = 0; j < X - 2; j++)
+        {
+            int child_pid;
+            if ((child_pid = fork()) == 0) // child process 미리 생성
+            {
+                cworker_func(i * X + j); // convollutiion worker생성
+                if (i < ((X / 2) - 1) && j < ((X / 2) - 1))
+                    pworker_func(i * X + j);
+                return 0;
+            }
+            else
+            {
+                worker_pids[i][j] = child_pid; // 자식의 pid를 matrix로 저장해둠
+            }
+        }
+    }
+```
+main process의 거의 앞부분에 구현되어야 할것이다.   
+
+부모 Process가 fork를 통해 자식 process의 pid를 알수있는데, signal을 사용해야 하기 떄문에 해당 worker의 pid를 저장할 matrix를 생성한다.
+
+## Convolutional Layer
+```C
+ for (int i = 0; i < newLen; i++)
+    {
+        for (int j = 0; j < newLen; j++)
+        {  // worker들이 생성되었음을 확인 (동기화 과정 )
+            ku_mq_receive("/mq_check", (char *)&check, sizeof(int), 0);
+            printf("come %d", check);
+        }
+    }
+
+    for (int i = 0; i < newLen; i++) // newLen * newLen 만큼 반복
+    {
+        for (int j = 0; j < newLen; j++)
+        {
+            struct msg_matrix_3x3_st msg_matrix_3x3; // 정보를 보낼 구조체 생성
+            msg_matrix_3x3.id = i * m + j;  // id값 저장 
+            for (int a = 0; a < 3; a++)
+            {
+                for (int b = 0; b < 3; b++)
+                {
+                    msg_matrix_3x3.value[a][b] = mat[i + a][j + b];  // value값 저장 
+                }
+            }
+            ku_mq_send("/mq_mat_3x3", (char *)&msg_matrix_3x3, sizeof(struct msg_matrix_3x3_st), 0); // 구조체 전송
+            kill(worker_pids[i][j], SIGUSR1); // signal 전송 -> worker가 pause()에서 깨어남
+        }
+    }
+    // 다시 동기화 과정
+    for (int i = 0; i < newLen; i++)
+    {
+        for (int j = 0; j < newLen; j++)
+        {
+            ku_mq_receive("/mq_check", (char *)&check, sizeof(int), 0);
+        }
+    }
+    // 결과를 받는
+    for (int i = 0; i < newLen; i++)
+    {
+        for (int j = 0; j < newLen; j++)
+        {
+            struct msg_ret_st msg_ret;
+            kill(worker_pids[i][j], SIGUSR1); // signal을 먼저 보내 깨운후에 
+            ku_mq_receive("/mq_ret", (char *)&msg_ret, sizeof(struct msg_ret_st), 0); // receiver 호출 
+            resultMat[msg_ret.id / size][msg_ret.id % size] = msg_ret.value;
+        }
+    }
+```
+
+(동기화 과정) 앞서 설명했던 cworker는 /mq_check에 data를 보낸다. 모든 worker들이 mq_check에 data를 넣은경우 모든 worker가 준비됨을 확인할 수 있고, 그 이후 convol_layer에서 matirx 연산이 진행된다.  
+
+(3x3 행렬 전송)
+미리 새성해논 행렬에 값을 전달한후, send를 요청한다. worker들이 아직 자고있기때문에 worker에 signal을 보낸다.   
+
+(다시 동기호 과정)   
+
+(결과를 전달받는)  먼저 kill로 signal을 보낸후 receive를 호출한다. data를 전송받고 수신을 행야하기 때문이다.
+
+## Max Polling Layer
+```C
+for (int i = 0; i < newLen - 1; i++)
+    {
+        for (int j = 0; j < newLen - 1; j++)
+        {
+            ku_mq_receive("/mq_check", (char *)&check, sizeof(int), 0);
+        }
+    }
+
+    for (int i = 0; i < newLen - 1; i++)
+    {
+        for (int j = 0; j < newLen - 1; j++)
+        {
+            struct msg_matrix_2x2_st msg_matrix_2x2;
+            msg_matrix_2x2.id = i * m + j;
+            for (int a = 0; a < 2; a++)
+            {
+                for (int b = 0; b < 2; b++)
+                {
+                    msg_matrix_2x2.value[a][b] = mat[2 * i + a][2 * j + b];
+                }
+            }
+            ku_mq_send("/mq_mat_2x2", (char *)&msg_matrix_2x2, sizeof(struct msg_matrix_2x2_st), 0);
+            kill(worker_pids[i][j], SIGUSR1);
+        }
+    }
+
+    for (int i = 0; i < newLen - 1; i++)
+    {
+        for (int j = 0; j < newLen - 1; j++)
+        {
+            ku_mq_receive("/mq_check", (char *)&check, sizeof(int), 0);
+        }
+    }
+
+    for (int i = 0; i < newLen - 1; i++)
+    {
+        for (int j = 0; j < newLen - 1; j++)
+        {
+            struct msg_ret_st msg_ret;
+            kill(worker_pids[i][j], SIGUSR1);
+            ku_mq_receive("/mq_ret", (char *)&msg_ret, sizeof(struct msg_ret_st), 0);
+            resultMat[msg_ret.id / size][msg_ret.id % size] = msg_ret.value;
+        }
+    }
+```
+ 
+이 과정은 이전의 convolutional layer의 과정과 동일다.
