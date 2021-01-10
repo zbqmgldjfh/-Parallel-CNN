@@ -118,3 +118,43 @@ void signalhandler()  // 단순 signal_interrupt 발생용
 각 process가 동기화를 마친후 pause()를 통해 각 worker를 정지시켜둔다.   
 data 통신 준비를 위해 signal을 전송하여 pause()에서 벗어나 send 또는 receive를 하도록 호출한다.    
 handler는 단순히 pause()에서 벗어나기위한 용도이다.
+
+## Worker Function
+```c
+void cworker_func(int id)  // worker
+{ // data를 먼저 받고
+    struct msg_matrix_3x3_st msg_matrix_3x3;
+    ku_mq_send("/mq_check", (char *)&id, sizeof(int), 0); // id값을 보냄
+    pause(); // 정지상태로 대기 
+    ku_mq_receive("/mq_mat_3x3", (char *)&msg_matrix_3x3, sizeof(struct msg_matrix_3x3_st), 0); // interrupt 발생으로 깨어남
+
+    int convl_ret = ConvolLayer(msg_matrix_3x3.value);  // 핵심 연산후 결과값 반환
+  // data 다시 전송
+    struct msg_ret_st msg_ret = {msg_matrix_3x3.id, convl_ret};  // 결과값 생성
+    ku_mq_send("/mq_check", (char *)&id, sizeof(int), 0); // 결과값 재전송
+    pause(); // 대기
+    ku_mq_send("/mq_ret", (char *)&msg_ret, sizeof(struct msg_ret_st), 0);
+}
+```
+
+mq_check라는 message queue에 메시지를 넣음으로써 모든 worker가 준비되었다는 것 을 확인한 후에 main에서 다음 step을 진행하도록.    
+동기화가 끝난후 각 worker들은 data받을 준비가 완료되었다. main이 어떤 data를 어디에 전송해야할지는 모름으로 main은 signal과 함께 data를 전송하다.    
+따라서 pause()를 통해서 기다리고 있던 worker는 signal을 통해 깨어나고, 그 pause()에서 깨어난 worker가 message queue를 읽어들여 data를 처리
+
+```C
+void pworker_func(int id)
+{
+    struct msg_matrix_2x2_st msg_matrix_2x2;
+    ku_mq_send("/mq_check", (char *)&id, sizeof(int), 0);
+    pause();
+    ku_mq_receive("/mq_mat_2x2", (char *)&msg_matrix_2x2, sizeof(struct msg_matrix_2x2_st), 0);
+
+    int mpl_ret = PoolingLayer(msg_matrix_2x2.value);
+
+    struct msg_ret_st msg_ret = {msg_matrix_2x2.id, mpl_ret};
+    ku_mq_send("/mq_check", (char *)&id, sizeof(int), 0);
+    pause();
+    ku_mq_send("/mq_ret", (char *)&msg_ret, sizeof(struct msg_ret_st), 0);
+}
+```
+이는 pworker_func도 위의 cworker_func와 같은 방식으로 작동한다.
