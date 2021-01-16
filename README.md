@@ -5,7 +5,7 @@
 리눅스를 너무 공부해보고 싶었는대 아직 다전공을 성공하지 못하였기에 우선 일선으로 수강
 
 ## Parallel CNN 설계
-> Parallel CNN중 일부만 구현
+> Parallel CNN중 일부만 구현, 코드 설명은 후반부
 ### - Convolution layer 구현
 ### - Pooling layer 구현
 <img src = "https://user-images.githubusercontent.com/60593969/103480651-c5399900-4e18-11eb-8659-4f44440d67bc.jpg" width="700px">
