@@ -4,8 +4,6 @@
 ![KakaoTalk_20201224_122503724](https://user-images.githubusercontent.com/60593969/103407755-23f5dd00-4ba3-11eb-9cd0-96cb4f1c90d7.jpg)   
 리눅스를 너무 공부해보고 싶었는대 아직 다전공을 성공하지 못하였기에 우선 일선으로 수강
 
-> Blog 후기 : https://blog.naver.com/zbqmgldjfh/222123067831
-
 ## Parallel CNN 설계
 > Parallel CNN중 일부만 구현, 코드 설명은 후반부
 ### - Convolution layer 구현
