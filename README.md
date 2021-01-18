@@ -4,6 +4,8 @@
 ![KakaoTalk_20201224_122503724](https://user-images.githubusercontent.com/60593969/103407755-23f5dd00-4ba3-11eb-9cd0-96cb4f1c90d7.jpg)   
 리눅스를 너무 공부해보고 싶었는대 아직 다전공을 성공하지 못하였기에 우선 일선으로 수강
 
+> Blog 후기 : https://blog.naver.com/zbqmgldjfh/222123067831
+
 ## Parallel CNN 설계
 > Parallel CNN중 일부만 구현, 코드 설명은 후반부
 ### - Convolution layer 구현
@@ -242,7 +244,7 @@ main process의 거의 앞부분에 구현되어야 할것이다.
 (3x3 행렬 전송)
 미리 새성해논 행렬에 값을 전달한후, send를 요청한다. worker들이 아직 자고있기때문에 worker에 signal을 보낸다.   
 
-(다시 동기호 과정)   
+(다시 동기화 과정)   
 
 (결과를 전달받는)  먼저 kill로 signal을 보낸후 receive를 호출한다. data를 전송받고 수신을 행야하기 때문이다.
 
