@@ -1,6 +1,6 @@
 # -Parallel-CNN
-#### 진현욱 교수님의 시스템프로그래밍을 신청하여 한학기 동안 수강하였습니다.
-![103407755-23f5dd00-4ba3-11eb-9cd0-96cb4f1c90d7](https://user-images.githubusercontent.com/60593969/192685294-a7984feb-e4cc-440f-bb16-055b3eab0dc7.jpeg)
+<!-- #### 진현욱 교수님의 시스템프로그래밍을 신청하여 한학기 동안 수강하였습니다.
+![103407755-23f5dd00-4ba3-11eb-9cd0-96cb4f1c90d7](https://user-images.githubusercontent.com/60593969/192685294-a7984feb-e4cc-440f-bb16-055b3eab0dc7.jpeg) -->
    
 
 ## Parallel CNN 설계
